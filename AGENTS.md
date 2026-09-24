@@ -2,13 +2,14 @@
 
 ## Project Structure & Module Organization
 
-This GHC plugin derives `Semigroup` and `Monoid` through field modifiers and `ModifiersOn`.
+This is a cabal-scaffold monorepo experimenting with GHC 10 modifiers.
 
-- `src/Data/Monoid/Deriving/Modifiers.hs`: compiler plugin.
-- `src/Data/Monoid/Deriving/Modifiers/Types.hs`: generic derivation machinery.
-- `app/Main.hs`: executable examples.
-- `test/Main.hs`: Tasty discovery entry point; currently no test cases.
-- `modifier-macros.cabal`, `cabal.project`, `cabal.project.freeze`: components, settings, dependency constraints.
+- `modifier-common/`: shared modifier collection, TH conversion, and metadata types.
+- `modifier-generics/`: modifier-aware `Generic` and `Generic1`, with capture plugin.
+- `th-reify-modifier/`: `reifyModifier :: Name -> Q [Type]` and capture plugin.
+- `modifier-macros/`: original `Semigroup`/`Monoid` derivation experiment and examples.
+- Each package has its own `.cabal`, `src/`, README and license; tests live in `test/`.
+- Root `cabal.project`, `cabal.project.freeze`, `cabal-scaffold.yaml`: shared settings.
 - `.github/workflows/haskell.yml`, `ci/scripts/`: CI and artifact handling.
 
 ## Build, Test, and Development Commands
@@ -19,7 +20,7 @@ Match CI's GHC `10.0.0.20260917` prerelease and Cabal `3.18.1.0`. Run from the r
 - `cabal build all`: compile all enabled components.
 - `cabal run modifier-macros-exe`: run examples.
 - `cabal test all --test-show-details=direct`: run tests.
-- `cabal check`: validate package metadata.
+- `bash ci/scripts/cabal-check-packages.sh`: validate every package.
 
 Keep local configuration in ignored `cabal.project.local`.
 
@@ -29,11 +30,13 @@ Use two-space indentation, `GHC2024`, explicit exports, and the checked-in `four
 
 Prefer `(<>)` over `(++)`, including lists and strings; prefer `pure` over `return`. Address compiler warnings.
 
-Format changes with `fourmolu -i <file.hs>` and `cabal-gild --io modifier-macros.cabal`. Use formatters supporting the project's syntax. After editing `package.yaml`, if introduced, run `hpack`.
+Format changes with `fourmolu -i <file.hs>` and `cabal-gild --io <package>/<package>.cabal`. Use formatters supporting the project's syntax. After editing `package.yaml`, if introduced, run `hpack`.
 
 ## Testing Guidelines
 
-Use Tasty with `tasty-discover`; add regressions under `test/` with behavior-focused names. Cover record/positional modifiers, unmodified fields, and monoid identity. Declare additional testing dependencies in the Cabal test stanza. No coverage threshold exists; an empty suite proves no behavior.
+Use Tasty with `tasty-discover`; add regressions under each package's `test/` with behavior-focused names. Use `falsify` for property tests and `tasty-inspection-testing` for optimization assertions. Cover record/positional modifiers, unmodified fields, and monoid identity. Declare additional testing dependencies in the Cabal test stanza. Keep compile-time metadata equalities and imported/local TH reification tests, including the separate fixture library and external-interpreter consumer.
+
+Mirror the tested library's module hierarchy: tests for `Generics.Modifier` belong in `test/Generics/ModifierSpec.hs`. Larger specs may be split beneath the corresponding module namespace, such as `Generics.Modifier.InspectionSpec`; avoid names that collide with another library module's spec.
 
 ## Agent Tools
 

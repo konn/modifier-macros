@@ -3091,6 +3091,7 @@ constraints:
   tasty-expected-failure ==0.12.3,
   tasty-fail-fast ==0.0.3,
   tasty-focus ==1.0.1,
+  tasty-falsify ==0.1.0,
   tasty-golden ==2.3.6,
   tasty-hedgehog ==1.4.0.2,
   tasty-hslua ==1.1.1.1,

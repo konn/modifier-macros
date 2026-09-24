@@ -121,11 +121,11 @@ data FieldRepInfo
   | IsPositional [LHsType GhcRn]
 
 parseFieldRepInfo :: ConDecl GhcRn -> FieldRepInfo
-parseFieldRepInfo ConDeclGADT {..} = 
+parseFieldRepInfo ConDeclGADT {..} =
   let con = case con_g_args of
         PrefixConGADT _ args -> PrefixCon args
         RecConGADT _ flds -> RecCon flds
-  in parseConArgs con
+   in parseConArgs con
 parseFieldRepInfo ConDeclH98 {..} = parseConArgs con_args
 
 parseConArgs :: HsConDeclH98Details GhcRn -> FieldRepInfo

@@ -167,4 +167,4 @@ jobs:
         with:
           cabal-version: 3.18.1.0
           ghc-version: latest
-      - run: cabal check
+      - run: bash ci/scripts/cabal-check-packages.sh

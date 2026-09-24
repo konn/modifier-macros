@@ -1,47 +1,136 @@
-# modifier-macros - An experiment around using GHC 10 Modifiers to mimic attribute macro
+# GHC modifier experiments
 
-This module explores the possibility to achieve something like Rust's attribute macro in Haskell, using `Modifiers` extension introduced in GHC 10.
+A `cabal-scaffold` monorepo for the experimental `Modifiers` extension in
+**GHC 10.0.0.20260917**. The compiler API dependencies are pinned to this
+prerelease; CI uses Cabal 3.18.1.0.
 
-This package provides a compiler plugin to collect field modifiers from parsed sources and save their representation as type family.
+| Package | Purpose |
+| --- | --- |
+| [`modifier-generics`](modifier-generics/) | `Generic` / `Generic1` with modifier lists in datatype, constructor and selector metadata |
+| [`th-reify-modifier`](th-reify-modifier/) | `reifyModifier :: Name -> Q [Type]` for datatype, constructor and record-field names |
+| [`modifier-common`](modifier-common/) | Shared compiler traversal, heterogeneous metadata and persistent TH annotations |
+| [`modifier-macros`](modifier-macros/) | Original field-modifier-based `Semigroup` / `Monoid` experiment |
 
-The example usage deriving `Monoid` instance by specifying monoid implementation as `%(..)` modifier on fields:
+Each directory is a separate Cabal package, with its own license, README and
+changelog. The root `cabal.project` discovers `*/*.cabal`.
+`cabal-scaffold.yaml` selects `monorepo-single` for future packages.
+
+## Modifier-aware generics
 
 ```haskell
-{-# LANGUAGE Modifiers, DerivingVia #-}
-{-# OPTIONS_GHC -fplugin Data.Monoid.Deriving.Modifiers #-}
+{-# LANGUAGE Modifiers #-}
+{-# OPTIONS_GHC -fplugin=Generics.Modifier.Plugin #-}
 {-# OPTIONS_GHC -Wno-unrecognised-modifiers #-}
-module Main (main) where
 
-import Data.Monoid.Deriving.Modifiers
-import Data.Monoid
-import GHC.Generics
+import GHC.Generics qualified as Stock
+import Generics.Modifier qualified as M
 
-data Foo a = Foo
-  { total %(Sum Int) :: !Int
-  , power %(Product Int) :: !Int
-  , children :: [Foo a]
-  , backwards %(Dual [String]):: [String]
-  }
-  deriving (Show, Eq, Ord, Generic)
-  deriving (Semigroup, Monoid) via ModifiersOn (Foo a)
-
-foo0 = Foo { total = 0, power = 1, children = [], backwards = []}
-foo1 = Foo { total = 1, power = 2, children = [foo0], backwards = ["foo1"]}
-foo2 = Foo { total = 3, power = 4, children = [foo1], backwards = ["foo2"]}
-
->>> foo1 <> foo 2
-Foo
-  { total = 4, -- Sum: 1 + 3
-    power = 8, -- Product: 2 * 4
-
-    -- list monoid: [foo0] <> [foo1]
-    children = 
-      [ Foo {total = 0, power = 1, children = [], backwards = []}
-      , Foo {total = 1, power = 2, children = [Foo {total = 0, power = 1, children = [], backwards = []}], backwards = ["foo1"]}],
-    
-    -- list monoid, but *dual* order: 
-    backwards = ["foo2","foo1"]
-  }
+%"entity" %True
+data Example a
+  = %"empty" Empty
+  | %"record" Record { payload %"json-name" %42 :: a }
+  deriving (Stock.Generic, Stock.Generic1)
 ```
 
-See [`app/Main.hs`](./app/Main.hs) for more example usage.
+Use `M.from`, `M.to`, `M.from1`, and `M.to1`. Stock deriving supplies the
+structural representation; the plugin supplies its modifiers. No second
+explicit deriving clause is needed. Both records and positional constructors,
+sums, products, empty datatypes, newtypes and stock-derivable GADTs work.
+`Rep1` retains `Par1`, `Rec1` and composition from stock `Generic1`.
+
+`M.D1`, `M.C1` and `M.S1` wrap metadata with one extra slot:
+
+```haskell
+M.MetaData name moduleName packageName isNewtype modifiers
+M.MetaCons name fixity isRecord modifiers
+M.MetaSel name unpackedness strictness decidedStrictness modifiers
+```
+
+The modifier slot has kind `[Modifier]`. `Mod` existentially packages each
+modifier's kind, so a single list can contain, for example,
+`'[Mod "label", Mod True, Mod 42, Mod Maybe, Mod (Eq Int)]`.
+`Meta` and `Modifier` use `type data`: their constructors are written without
+promotion ticks. Modifiers retain their source order and duplicates. Unmodified
+entities have `[]`; grouped record fields receive the same modifier list.
+Standard queries such as `datatypeName`, `conName` and `selName` remain usable.
+
+For `Rep (Example Int)`, type parameters in modifiers are instantiated as usual.
+`Rep1 Example` has no concrete last argument: its metadata uses the polykinded
+symbolic type `Parameter`, just as its values use `Par1`. Thus a field modifier
+`Maybe a` becomes `Mod (Maybe Parameter)` in `Rep1`; it is **not discarded**.
+The remaining datatype parameters retain their actual types.
+
+## Template Haskell reification
+
+Enable either capture plugin in the **defining module**:
+
+```haskell
+{-# LANGUAGE DataKinds, Modifiers, TemplateHaskell #-}
+{-# OPTIONS_GHC -fplugin=Language.Haskell.TH.Modifier.Plugin #-}
+{-# OPTIONS_GHC -Wno-unrecognised-modifiers #-}
+
+import Language.Haskell.TH
+import Language.Haskell.TH.Modifier
+
+%"table"
+data Row = %"row" Row { value %"column" %True :: Int }
+
+$(pure [])  -- normal TH declaration-group boundary
+
+-- Within Q:
+-- reifyModifier ''Row  ==> [LitT (StrTyLit "table")]
+-- reifyModifier 'Row   ==> [LitT (StrTyLit "row")]
+-- reifyModifier 'value ==> [LitT (StrTyLit "column"), PromotedT ...True...]
+```
+
+Results are ordinary Template Haskell `Type` values, with names retaining their
+package, module and namespace. Free type variables are aligned with the binders
+returned by ordinary `reify`, including after loading an interface. The plugin persists annotations in `.hi` files;
+consumers can reify imported declarations without the capture plugin or source
+files. The two plugins can be enabled together without duplicating annotations.
+No global mutable registry or `unsafeCoerce` is used.
+
+An inspected entity with no modifiers returns `[]`. Missing capture produces an
+error explaining how to enable it, rather than silently returning `[]`. A record
+selector shared by several constructors returns all its occurrences' modifiers
+in constructor order. Positional fields have no `Name`; their modifiers are
+available through generic selector metadata.
+
+## Compiler boundaries
+
+- Generic derivation has stock GHC's restrictions (for example, existential or
+  genuinely indexed GADTs cannot derive stock `Generic`). The TH-only plugin
+  does not require generic instances.
+- This API captures datatype declarations, data constructors and record fields.
+- TH cannot represent modifier annotations *inside* a modifier's function-arrow
+  type beyond a single explicitly identified multiplicity. Unsupported syntax is rejected explicitly, not pretty-printed into a
+  lossy approximation. Top-level heterogeneous modifier lists are supported.
+- GHC requires `-fno-external-interpreter` when loading compiler plugins. An
+  importing TH consumer without plugins can use `-fexternal-interpreter`.
+- This GHC's experimental modifier syntax and scoping rules remain applicable.
+
+## Development and validation
+
+```sh
+cabal build modifier-common
+cabal build th-reify-modifier
+cabal build modifier-generics
+cabal build modifier-macros
+cabal test all --test-show-details=direct
+cabal run modifier-macros-exe
+bash ci/scripts/cabal-check-packages.sh
+cabal sdist all
+```
+
+Tests include compile-time representation equalities, local and imported TH
+reification, and the original monoid behavior. TH fixtures are compiled as a
+separate library and consumed using the external interpreter, exercising
+interface-file persistence. `falsify` checks generic conversion laws on generated
+sums, records and recursive values. `tasty-inspection-testing` compares optimized
+Core against hand-written code and checks that generic wrappers and dictionaries
+are eliminated in representative consumers.
+
+Format source with a Fourmolu version supporting the syntax in the file, and run
+`cabal-gild --io <package>/<package>.cabal` after changing package metadata.
+Older Fourmolu releases reject the `Modifiers` extension; the modifier fixtures
+must be maintained manually until such a formatter is available.
