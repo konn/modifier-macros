@@ -9,7 +9,6 @@ on:
 jobs:
   build:
     name: Build
-    continue-on-error: true
     env:
       cabal-version: 3.18.1.0
       ghc: 10.0.0.20260917
@@ -18,9 +17,9 @@ jobs:
     outputs:
       benchmarks: ${{steps.list-bins.outputs.benchs}}
       tests: ${{steps.list-bins.outputs.tests}}
-      artifact: "artifact-${{matrix.plan.name}}"
+      artifact: ${{env.artifact-name}}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
         with:
           ref: ${{github.event.pull_request.head.sha || github.sha}}
 
@@ -68,9 +67,8 @@ jobs:
           key: dist-${{runner.os}}-${{env.ghc}}-${{ hashFiles('cabal.project', 'cabal.project.freeze', '**/*.cabal' ) }}-${{ hashFiles('**/*.hs', '**/*.lhs', '**/*.hsig') }}
 
       - name: Collect binaries
-        continue-on-error: true
         run: bash ./ci/scripts/collect-bins.sh "${{env.artifact-name}}"
-      - name: Upload Aritracts
+      - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
           path: ${{env.artifact-name}}.tar.zst
@@ -80,12 +78,12 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           path: dist-newstyle
-          name: dist-newstyle-${{matrix.plan.name}}
+          name: dist-newstyle
       - name: Upload ~/.cabal/store directory (for doctest)
         uses: actions/upload-artifact@v4
         with:
           path: ~/.cabal/store
-          name: store-${{matrix.plan.name}}
+          name: store
       - name: List Binaries
         id: list-bins
         shell: bash
@@ -94,23 +92,15 @@ jobs:
           echo "tests=$(jq -cMnR '[inputs]' <"${{env.artifact-name}}"/tests.list)" >>"${GITHUB_OUTPUT}"
 
   test:
-    name: Test (${{matrix.plan.name}})
+    name: Test
     needs: [build]
-    continue-on-error: ${{matrix.plan.is_head}}
     env:
-      cabal: 3.14.2.0
-      ghc: ${{matrix.plan.ghc}}
-      project-file: ${{matrix.plan.path}}
-      plan: ${{matrix.plan.name}}
-      artifact: artifact-${{matrix.plan.name}}
-      dist-name: dist-newstyle-${{matrix.plan.name}}
-      store: store-${{matrix.plan.name}}
+      artifact: ${{needs.build.outputs.artifact}}
+      dist-name: dist-newstyle
+      store: store
     runs-on: ubuntu-latest
     steps:
-      - name: Fail when Corresponding Build didn't succeed
-        if: ${{needs.build.result != 'success' }}
-        run: echo "BUILD FAILED" >&2; exit 1
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
         with:
           ref: ${{github.event.pull_request.head.sha || github.sha}}
       - name: Download artifacts
@@ -172,7 +162,7 @@ jobs:
     name: Cabal Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
       - uses: haskell-actions/setup@v2
         with:
           cabal-version: 3.18.1.0
