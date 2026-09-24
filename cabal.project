@@ -1,0 +1,4 @@
+packages: **.cabal
+tests: True
+benchmarks: True
+write-ghc-environment-files: always

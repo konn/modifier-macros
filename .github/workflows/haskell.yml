@@ -1,0 +1,180 @@
+name: Haskell CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  build:
+    name: Build
+    continue-on-error: true
+    env:
+      cabal-version: 3.18.1.0
+      ghc: 10.0.0.20260917
+      artifact-name: "artifact"
+    runs-on: ubuntu-latest
+    outputs:
+      benchmarks: ${{steps.list-bins.outputs.benchs}}
+      tests: ${{steps.list-bins.outputs.tests}}
+      artifact: "artifact-${{matrix.plan.name}}"
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{github.event.pull_request.head.sha || github.sha}}
+
+      - name: Setup Haskell
+        uses: haskell-actions/setup@v2
+        with:
+          enable-stack: false
+          cabal-version: ${{env.cabal-version}}
+          ghc-version: ${{env.ghc}}
+          ghcup-release-channel: "https://github.com/haskell/ghcup-metadata/raw/refs/heads/develop/ghcup-prereleases-0.1.0.yaml"
+      - name: Restore ~/.cabal/store
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.cabal/store
+          key: store-${{runner.os}}-${{env.ghc}}-${{ hashFiles('cabal.project', 'cabal.project.freeze', '**/*.cabal' ) }}
+          restore-keys: |
+            store-${{runner.os}}-${{env.ghc}}-
+      - name: Restore dist-newstyle
+        uses: actions/cache/restore@v4
+        with:
+          path: dist-newstyle
+          key: dist-${{runner.os}}-${{env.ghc}}-${{ hashFiles('cabal.project', 'cabal.project.freeze', '**/*.cabal' ) }}-${{ hashFiles('**/*.hs', '**/*.lhs', '**/*.hsig') }}
+          restore-keys: |
+            dist-${{runner.os}}-${{env.ghc}}-${{ hashFiles('cabal.project', 'cabal.project.freeze', '**/*.cabal' ) }}-
+            dist-${{runner.os}}-${{env.ghc}}-
+      - name: cabal configure
+        run: |
+          cabal v2-configure --enable-tests --enable-benchmarks --enable-optimisation=2
+          cabal update
+      - name: Build Dependencies
+        run: |
+          cabal build --only-dependencies all
+      - name: Save ~/.cabal/store Cache
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.cabal/store
+          key: store-${{runner.os}}-${{env.ghc}}-${{ hashFiles('cabal.project', 'cabal.project.freeze', '**/*.cabal' ) }}-${{ hashFiles('**/*.hs', '**/*.lhs', '**/*.hsig') }}
+      - name: Build All
+        run: |
+          cabal build all
+      - name: Save dist-newstyle Cache
+        uses: actions/cache/save@v4
+        with:
+          path: dist-newstyle
+          key: dist-${{runner.os}}-${{env.ghc}}-${{ hashFiles('cabal.project', 'cabal.project.freeze', '**/*.cabal' ) }}-${{ hashFiles('**/*.hs', '**/*.lhs', '**/*.hsig') }}
+
+      - name: Collect binaries
+        continue-on-error: true
+        run: bash ./ci/scripts/collect-bins.sh "${{env.artifact-name}}"
+      - name: Upload Aritracts
+        uses: actions/upload-artifact@v4
+        with:
+          path: ${{env.artifact-name}}.tar.zst
+          name: ${{env.artifact-name}}
+          retention-days: 1
+      - name: Upload dist directory (for doctest)
+        uses: actions/upload-artifact@v4
+        with:
+          path: dist-newstyle
+          name: dist-newstyle-${{matrix.plan.name}}
+      - name: Upload ~/.cabal/store directory (for doctest)
+        uses: actions/upload-artifact@v4
+        with:
+          path: ~/.cabal/store
+          name: store-${{matrix.plan.name}}
+      - name: List Binaries
+        id: list-bins
+        shell: bash
+        run: |
+          echo "benchs=$(jq -cMnR '[inputs]' <"${{env.artifact-name}}"/benchs.list)" >>"${GITHUB_OUTPUT}"
+          echo "tests=$(jq -cMnR '[inputs]' <"${{env.artifact-name}}"/tests.list)" >>"${GITHUB_OUTPUT}"
+
+  test:
+    name: Test (${{matrix.plan.name}})
+    needs: [build]
+    continue-on-error: ${{matrix.plan.is_head}}
+    env:
+      cabal: 3.14.2.0
+      ghc: ${{matrix.plan.ghc}}
+      project-file: ${{matrix.plan.path}}
+      plan: ${{matrix.plan.name}}
+      artifact: artifact-${{matrix.plan.name}}
+      dist-name: dist-newstyle-${{matrix.plan.name}}
+      store: store-${{matrix.plan.name}}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail when Corresponding Build didn't succeed
+        if: ${{needs.build.result != 'success' }}
+        run: echo "BUILD FAILED" >&2; exit 1
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{github.event.pull_request.head.sha || github.sha}}
+      - name: Download artifacts
+        id: download
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{env.artifact}}
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{env.dist-name}}
+          path: dist-newstyle
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{env.store}}
+          path: ~/.cabal/store
+      - name: Decompress and locate artifacts
+        run: |
+          ls -R "${{ steps.download.outputs.download-path }}"
+          tar xaf "${{ steps.download.outputs.download-path }}/${{env.artifact}}.tar.zst"
+          cp "${{env.artifact}}"/.ghc.environment.* .
+          ls -R
+      - name: Run Tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOTAL=0
+          SUCCESS=0
+          FAIL=0
+          while read -r TEST; do
+            TOTAL=$((TOTAL + 1))
+            echo "--------"
+            echo "Running: ${TEST}"
+            set +e
+            ${{env.artifact}}/tests/"${TEST}"
+            RESL=$?
+            set -e
+            if [ ${RESL} -eq 0 ]; then
+              SUCCESS=$((SUCCESS + 1))
+              echo "Result: Successed"
+            else
+              FAIL=$((FAIL + 1))
+              echo 'Result: FAILED!'
+            fi
+          done <${{env.artifact}}/tests.list
+
+          echo ""
+          echo "----"
+
+          if [ "${FAIL}" -eq 0 ]; then
+            echo "All ${TOTAL} tests passed."
+          else
+            echo "${FAIL} out of ${TOTAL} tests FAILED"'!'
+            exit 1
+          fi
+
+  cabal-check:
+    name: Cabal Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: haskell-actions/setup@v2
+        with:
+          cabal-version: 3.18.1.0
+          ghc-version: latest
+      - run: cabal check

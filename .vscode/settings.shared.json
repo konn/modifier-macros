@@ -1,0 +1,13 @@
+{
+  "emeraldwalk.runonsave": {
+    "commands": [
+      {
+        "cmd": "find . -not -path 'dist-newstyle/**/*' \\( -name '*.cabal' -or -name 'cabal\\.project*' \\) -exec cabal-gild --io {} \\;",
+        "isAsync": true,
+        "match": "(\\.cabal|\\.l?hs)$"
+      }
+    ]
+  },
+  "haskell.sessionLoading": "multipleComponents",
+  "haskell.plugin.rename.config.crossModule": true
+}
