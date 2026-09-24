@@ -6,7 +6,7 @@ This is a cabal-scaffold monorepo experimenting with GHC 10 modifiers.
 
 - `modifier-common/`: shared modifier collection, TH conversion, and metadata types.
 - `modifier-generics/`: modifier-aware `Generic` and `Generic1`, with capture plugin.
-- `th-reify-modifier/`: `reifyModifier :: Name -> Q [Type]` and capture plugin.
+- `th-reify-modifier/`: modifier queries, structured reification using `th-abstraction`, and capture plugin.
 - `modifier-macros/`: original `Semigroup`/`Monoid` derivation experiment and examples.
 - Each package has its own `.cabal`, `src/`, README and license; tests live in `test/`.
 - Root `cabal.project`, `cabal.project.freeze`, `cabal-scaffold.yaml`: shared settings.

@@ -15,7 +15,7 @@ import Data.Foldable (toList)
 import Data.List (groupBy, sortOn)
 import GHC.Hs
 import GHC.Modifiers.TH (modifierType)
-import GHC.Modifiers.Types (ModifierAnnotation (..))
+import GHC.Modifiers.Types (ConstructorFieldsAnnotation (..), ModifierAnnotation (..))
 import GHC.Plugins hiding ((<>))
 import GHC.Tc.Errors.Types (mkTcRnUnknownMessage)
 import GHC.Tc.Types (TcGblEnv (..), TcM)
@@ -84,10 +84,12 @@ interface-file payload. Repeated activation by the two public plugins is safe.
 annotateModifiers :: TcGblEnv -> [DatatypeModifiers] -> TcM TcGblEnv
 annotateModifiers env datatypes = do
   anns <- traverse annotate fresh
+  fieldAnns <- traverse annotateFields freshFields
+  let allAnns = anns <> fieldAnns
   pure
     env
-      { tcg_anns = tcg_anns env <> anns
-      , tcg_ann_env = extendAnnEnvList (tcg_ann_env env) anns
+      { tcg_anns = tcg_anns env <> allAnns
+      , tcg_ann_env = extendAnnEnvList (tcg_ann_env env) allAnns
       }
   where
     entities = concatMap (\DatatypeModifiers {..} -> (datatypeName, datatypeModifiers) : concatMap conEntities datatypeConstructors) datatypes
@@ -99,6 +101,15 @@ annotateModifiers env datatypes = do
     annotate (n, ts) = case traverse modifierType ts of
       Left message -> failWithTc $ mkTcRnUnknownMessage $ mkPlainError [] (text message)
       Right tys -> pure $ Annotation (NamedTarget n) (toSerialized serializeWithData (ModifierAnnotation tys))
+    freshFields =
+      [ (constructorName, map fieldModifiers constructorFields)
+      | DatatypeModifiers {..} <- datatypes
+      , ConstructorModifiers {..} <- datatypeConstructors
+      , null (findAnns deserializeWithData (tcg_ann_env env) (NamedTarget constructorName) :: [ConstructorFieldsAnnotation])
+      ]
+    annotateFields (n, fields) = case traverse (traverse modifierType) fields of
+      Left message -> failWithTc $ mkTcRnUnknownMessage $ mkPlainError [] (text message)
+      Right tys -> pure $ Annotation (NamedTarget n) (toSerialized serializeWithData (ConstructorFieldsAnnotation tys))
 
 -- | The annotation-only capture plugin used by TH reification.
 modifierPlugin :: Plugin

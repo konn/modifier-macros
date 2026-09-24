@@ -3,9 +3,11 @@
 {-# OPTIONS_GHC -fplugin=Generics.Modifier.Plugin #-}
 {-# OPTIONS_GHC -Wno-unrecognised-modifiers #-}
 
-module BothPlugins (Both (..)) where
+module BothPlugins (Both (..), BothFields (..)) where
 
 import GHC.Generics (Generic)
 
 %"both"
 data Both = Both deriving (Generic)
+
+data BothFields = BothFields {bothValue %"field" :: Int} deriving (Generic)

@@ -1,3 +1,4 @@
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -12,6 +13,7 @@ import GHC.Exts (Multiplicity (One))
 import Generics.Modifier
 import Language.Haskell.TH (pprint, stringE)
 import Language.Haskell.TH.Modifier (reifyModifier)
+import Language.Haskell.TH.Modifier qualified as THM
 import Test.Tasty
 import Test.Tasty.HUnit
 
@@ -132,6 +134,10 @@ test_metadata =
         $(reifyModifier ''Example >>= stringE . show . length) @?= "3"
     , testCase "both plugins preserve a single copy of annotations" $
         $(reifyModifier ''Both >>= stringE . show . length) @?= "1"
+    , testCase "generic plugin captures positional fields for structured TH" $
+        $(THM.reifyConstructor 'Positional >>= stringE . show . map (length . THM.fieldModifiers) . THM.constructorFields) @?= "[2,1]"
+    , testCase "both plugins preserve a single copy of structured field annotations" $
+        $(THM.reifyConstructor 'BothFields >>= stringE . pprint . concatMap THM.fieldModifiers . THM.constructorFields) @?= "\"field\""
     , testCase "all repeated field modifiers retained" $
         $(reifyModifier 'first >>= stringE . show . length) @?= "4"
     , testCase "grouped record fields" $

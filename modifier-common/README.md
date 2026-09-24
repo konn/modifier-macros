@@ -6,7 +6,8 @@ Shared infrastructure for `modifier-generics` and `th-reify-modifier`:
   including sums, GADT constructor groups and grouped record selectors.
 - `GHC.Modifiers.TH`: structural conversion to TH `Type`, retaining name identity.
 - `GHC.Modifiers.Types`: heterogeneous `Modifier` packaging, the
-  `ModifierMetadata` family, and the serialized annotation payload.
+  `ModifierMetadata` family, and serialized annotation payloads for individual
+  names and each constructor's field occurrences.
 
 Capture occurs after renaming. Annotations are added both to the current TH
 annotation environment and to the interface payload, with idempotent insertion

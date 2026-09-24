@@ -8,6 +8,7 @@ module GHC.Modifiers.Types (
   Metadata,
   ModifierMetadata,
   ModifierAnnotation (..),
+  ConstructorFieldsAnnotation (..),
 ) where
 
 import Data.Data (Data)
@@ -33,4 +34,11 @@ type family ModifierMetadata (a :: k) :: Metadata
 payload records that an entity was inspected and has no modifiers.
 -}
 newtype ModifierAnnotation = ModifierAnnotation [TH.Type]
+  deriving (Data)
+
+{- | Modifiers for each field of one constructor, in declaration order.
+Unlike selector annotations, this includes positional fields and keeps shared
+record labels separate. The payload is empty for a nullary constructor.
+-}
+newtype ConstructorFieldsAnnotation = ConstructorFieldsAnnotation [[TH.Type]]
   deriving (Data)

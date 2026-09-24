@@ -5,6 +5,7 @@ synopsis: Reify GHC modifiers as Template Haskell types
 description:
   Capture heterogeneous GHC modifier metadata on datatype declarations,
   constructors and fields for generic programming and Template Haskell.
+  Provide structured datatype reification using th-abstraction normalization.
   This experimental package targets a pinned GHC 10 prerelease. See README.md.
 
 category: Generics
@@ -43,9 +44,11 @@ library
     Language.Haskell.TH.Modifier.Plugin
 
   build-depends:
+    containers >=0.8 && <0.9,
     ghc ==10.0.0.20260917,
     modifier-common >=0.1 && <0.2,
     template-haskell >=2.25 && <2.26,
+    th-abstraction >=0.7.2 && <0.8,
 
 test-suite th-reify-modifier-test
   import: defaults
@@ -55,12 +58,14 @@ test-suite th-reify-modifier-test
   ghc-options: -fexternal-interpreter
   -- cabal-gild: discover test --exclude=test/Main.hs
   other-modules:
+    Language.Haskell.TH.Modifier.DatatypeSpec
     Language.Haskell.TH.ModifierSpec
 
   build-depends:
     tasty,
     tasty-hunit,
     template-haskell >=2.25 && <2.26,
+    th-abstraction >=0.7.2 && <0.8,
     th-reify-modifier,
     th-reify-modifier:fixtures,
 
@@ -71,6 +76,7 @@ library fixtures
   import: defaults
   hs-source-dirs: fixtures
   exposed-modules:
+    DatatypeFixtures
     FieldFixtures
     Fixture
     LocalFixture

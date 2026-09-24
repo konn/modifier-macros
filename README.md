@@ -7,7 +7,7 @@ prerelease; CI uses Cabal 3.18.1.0.
 | Package | Purpose |
 | --- | --- |
 | [`modifier-generics`](modifier-generics/) | `Generic` / `Generic1` with modifier lists in datatype, constructor and selector metadata |
-| [`th-reify-modifier`](th-reify-modifier/) | `reifyModifier :: Name -> Q [Type]` for datatype, constructor and record-field names |
+| [`th-reify-modifier`](th-reify-modifier/) | TH modifier queries and `th-abstraction`-based datatype, constructor and field information |
 | [`modifier-common`](modifier-common/) | Shared compiler traversal, heterogeneous metadata and persistent TH annotations |
 | [`modifier-macros`](modifier-macros/) | Original field-modifier-based `Semigroup` / `Monoid` experiment |
 
@@ -94,7 +94,16 @@ An inspected entity with no modifiers returns `[]`. Missing capture produces an
 error explaining how to enable it, rather than silently returning `[]`. A record
 selector shared by several constructors returns all its occurrences' modifiers
 in constructor order. Positional fields have no `Name`; their modifiers are
-available through generic selector metadata.
+available through generic selector metadata and the structured TH API.
+
+`reifyDatatype :: Name -> Q DatatypeInfo` and
+`reifyConstructor :: Name -> Q ConstructorInfo` provide a structured view using
+`th-abstraction` for normalization. `DatatypeInfo` and `ConstructorInfo` carry
+`datatypeModifiers` and `constructorModifiers`. Each entry in `constructorFields`
+is a `FieldInfo` with a label (if present), type, strictness, and `fieldModifiers`.
+This keeps shared selectors separate by constructor and includes positional
+fields. GADT substitutions apply to modifiers as well as field types. See the
+[package README](th-reify-modifier/README.md) for the API and supported declarations.
 
 ## Compiler boundaries
 
