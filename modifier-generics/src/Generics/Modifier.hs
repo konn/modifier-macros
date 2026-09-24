@@ -12,6 +12,13 @@
 -}
 module Generics.Modifier (
   Generic (..),
+  MGenerically (..),
+  MonoidVia,
+  GSemigroup,
+  genericMappend,
+  GMonoid,
+  genericMempty,
+  MGenerically1 (..),
   Generic1 (..),
   Meta (..),
   M1 (..),
@@ -24,17 +31,173 @@ module Generics.Modifier (
   module G,
 ) where
 
+import Data.Coerce
+import Data.Function (on)
 import Data.Kind (Type)
 import GHC.Generics as G hiding (C1, D1, Generic (..), Generic1 (..), M1 (..), Meta (..), S1)
 import GHC.Generics qualified as GHC
 import GHC.Modifiers.Types
-import GHC.TypeLits
+import GHC.TypeError
+import GHC.TypeLits (Nat, Symbol, type (+), type (-))
 
 -- | Standard metadata with an additional heterogeneous modifier list.
 type data Meta
   = MetaData Symbol Symbol Symbol Bool [Modifier]
   | MetaCons Symbol FixityI Bool [Modifier]
   | MetaSel (Maybe Symbol) SourceUnpackedness SourceStrictness DecidedStrictness [Modifier]
+
+{- | A datatype whose instances are defined generically with 'Modifier's, using the 'Generic' representation.
+This is the modifier-analogue of 'GHC.Generics.Generically'. t'MGenerically1' is a higher-kinded version of t'MGenerically' that uses 'Generic1'.
+-}
+newtype MGenerically a = MGenerically a
+
+{- |
+An implementation modifier for deriving 'Semigroup' and 'Monoid' instances using @DerivingVia@ to be used with t'MGenerically'.
+
+== Example
+
+@
+{-# OPTIONS_GHC -fplugin="Generics.Modifier.Plugin" #-}
+{-# LANGUAGE Modifiers #-}
+import Data.Monoid
+
+data MyType = MyType
+  { total      %('MonoidVia' ('Data.Monoid.Sum' 'Int'))  :: !'Int'
+  , forwards                           :: [a]
+  , backwards  %('MonoidVia' ('Data.Monoid.Dual' [a])) :: [a]
+  }
+  deriving stock ('GHC.Generic') -- from "GHC.Generics"
+  deriving anyclass ('Generics.Modifier.Generic') -- from "Generics.Modifier"
+  deriving ('Semigroup', 'Monoid') via t'MGenerically' MyType
+@
+
+This will derive the instances equivalent to the following, but each field without a newtype wrapper such as t'Data.Monoid.Sum' or t'Data.Monoid.Dual'.
+
+@
+data MyType = MyType
+  { total     :: !('Data.Monoid.Sum' 'Int')
+  , forwards  :: [a]
+  , backwards :: !('Data.Monoid.Dual' [a])
+  }
+  deriving stock ('GHC.Generic') -- from "GHC.Generics"
+  deriving ('Semigroup', 'Monoid') via 'Generically' MyType
+@
+-}
+type MonoidVia :: Type -> Type
+type data MonoidVia a
+
+type family LookupMonoidRepr (mods :: [Modifier]) :: Maybe Type where
+  LookupMonoidRepr '[] = Nothing
+  LookupMonoidRepr (Mod (MonoidVia a) ': xs) = NodupMonoidVia a xs
+  LookupMonoidRepr (_ ': xs) = LookupMonoidRepr xs
+
+type family NodupMonoidVia a xs where
+  NodupMonoidVia a '[] = Just a
+  NodupMonoidVia a (Mod (MonoidVia x) ': xs) =
+    TypeError
+      ( 'Text "Duplicate MonoidVia modifiers: "
+          :<>: ShowType a
+          :<>: Text " and "
+          :<>: ShowType x
+      )
+  NodupMonoidVia a (_ ': xs) = NodupMonoidVia a xs
+
+type GSemigroup a = (Generic a, GSem (Rep a))
+
+{- |
+See the documentation of 'MonoidVia' how to specify the per-field 'Semigroup' implementation.
+-}
+instance (GSemigroup a) => Semigroup (MGenerically a) where
+  (<>) = coerce (genericMappend @a)
+  {-# INLINE (<>) #-}
+
+genericMappend :: (GSemigroup a) => a -> a -> a
+{-# INLINE genericMappend #-}
+genericMappend = fmap to . (gappend `on` from)
+
+type GMonoid a = (Generic a, GMon (Rep a))
+
+{- |
+See the documentation of 'MonoidVia' how to specify the per-field 'Semigroup' implementation.
+-}
+instance (GMonoid a) => Monoid (MGenerically a) where
+  mempty = MGenerically genericMempty
+  {-# INLINE mempty #-}
+
+genericMempty :: forall a. (GMonoid a) => a
+genericMempty = to (gmempty @(Rep a))
+{-# INLINE genericMempty #-}
+
+class GSem f where
+  gappend :: f () -> f () -> f ()
+
+instance (GSem f) => GSem (D1 i f) where
+  gappend = coerce (gappend @f)
+  {-# INLINE gappend #-}
+
+instance (GSem f) => GSem (C1 i f) where
+  gappend = coerce (gappend @f)
+  {-# INLINE gappend #-}
+
+instance (GSem l, GSem r) => GSem (l :*: r) where
+  gappend (l1 :*: r1) (l2 :*: r2) = gappend l1 l2 :*: gappend r1 r2
+  {-# INLINE gappend #-}
+
+instance
+  ( LookupMonoidRepr mods ~ 'Just rep
+  , Semigroup rep
+  , Coercible c rep
+  ) =>
+  GSem (S1 (MetaSel n u s d mods) (K1 i c))
+  where
+  gappend = coerce ((<>) @rep)
+  {-# INLINE gappend #-}
+
+instance
+  (Unsatisfiable (Text "Semigroup cannot be derived for sum types")) =>
+  GSem (f :+: g)
+  where
+  gappend = unsatisfiable
+  {-# INLINE gappend #-}
+
+class (GSem f) => GMon f where
+  gmempty :: f ()
+
+instance (GMon f) => GMon (D1 i f) where
+  gmempty = coerce (gmempty @f)
+  {-# INLINE gmempty #-}
+
+instance (GMon f) => GMon (C1 i f) where
+  gmempty = coerce (gmempty @f)
+  {-# INLINE gmempty #-}
+
+instance (GMon l, GMon r) => GMon (l :*: r) where
+  gmempty = gmempty @l :*: gmempty @r
+  {-# INLINE gmempty #-}
+
+instance
+  ( LookupMonoidRepr mods ~ 'Just rep
+  , Monoid rep
+  , Coercible c rep
+  ) =>
+  GMon (S1 (MetaSel n u s d mods) (K1 i c))
+  where
+  gmempty = coerce (mempty @rep)
+  {-# INLINE gmempty #-}
+
+instance
+  (Unsatisfiable (Text "Monoid cannot be derived for sum types")) =>
+  GMon (f :+: g)
+  where
+  gmempty = unsatisfiable
+  {-# INLINE gmempty #-}
+
+{- | A type whose instances are defined generically, using the 'Generic1' representation. t'MGenerically1' is a higher-kinded version of t'MGenerically' that uses 'Generic1'.
+This is the modifier-analogue of 'GHC.Generics.Generically1'.
+Generic instances can be derived for type constructors via @t'MGenerically1' F@ using @-XDerivingVia@.
+-}
+type MGenerically1 :: forall {k}. (k -> Type) -> k -> Type
+newtype MGenerically1 f a = MGenerically1 (f a)
 
 -- | A metadata wrapper with the same runtime representation as stock 'GHC.M1'.
 newtype M1 i (m :: Meta) (f :: k -> Type) (p :: k) = M1 {unM1 :: f p}
