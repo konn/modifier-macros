@@ -1,0 +1,28 @@
+# Repository plugin sources; Codex stores downloaded files in its own cache.
+[marketplaces.konn-haskell-claude-tools]
+source_type = "git"
+source = "https://github.com/konn/haskell-claude-marketplace.git"
+ref = "0e245bba41e5f0048e0536c7f99d24669f0799ac"
+
+[marketplaces.claude-hoogle]
+source_type = "git"
+source = "https://github.com/m4dc4p/claude-hoogle.git"
+ref = "b190f0ab2f1573d7e83e4a8992f4130de2c58bac"
+
+[plugins."haskell-skill@konn-haskell-claude-tools"]
+enabled = true
+
+[plugins."haskell-lsp-plugin@konn-haskell-claude-tools"]
+enabled = true
+
+[plugins."haskell-haddock-skill@konn-haskell-claude-tools"]
+enabled = true
+
+[plugins."haskell-format-skill@konn-haskell-claude-tools"]
+enabled = true
+
+[plugins."haskell-cabal-gild-skill@konn-haskell-claude-tools"]
+enabled = true
+
+[plugins."hoogle@claude-hoogle"]
+enabled = true

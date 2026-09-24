@@ -1,0 +1,26 @@
+{
+  "extraKnownMarketplaces": {
+    "konn-haskell-claude-tools": {
+      "source": {
+        "source": "github",
+        "repo": "konn/haskell-claude-marketplace",
+        "ref": "0e245bba41e5f0048e0536c7f99d24669f0799ac"
+      }
+    },
+    "claude-hoogle": {
+      "source": {
+        "source": "github",
+        "repo": "m4dc4p/claude-hoogle",
+        "ref": "b190f0ab2f1573d7e83e4a8992f4130de2c58bac"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "haskell-skill@konn-haskell-claude-tools": true,
+    "haskell-lsp-plugin@konn-haskell-claude-tools": true,
+    "haskell-haddock-skill@konn-haskell-claude-tools": true,
+    "haskell-format-skill@konn-haskell-claude-tools": true,
+    "haskell-cabal-gild-skill@konn-haskell-claude-tools": true,
+    "hoogle@claude-hoogle": true
+  }
+}
