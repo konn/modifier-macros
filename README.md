@@ -18,23 +18,35 @@ changelog. The root `cabal.project` discovers `*/*.cabal`.
 ## Modifier-aware generics
 
 ```haskell
-{-# LANGUAGE Modifiers #-}
+{-# LANGUAGE DeriveAnyClass, DeriveGeneric, DerivingStrategies, Modifiers #-}
 {-# OPTIONS_GHC -fplugin=Generics.Modifier.Plugin #-}
 {-# OPTIONS_GHC -Wno-unrecognised-modifiers #-}
 
-import GHC.Generics qualified as Stock
+import Data.Kind (Type)
+import GHC.Generics qualified as GHC
 import Generics.Modifier qualified as M
 
-%"entity" %True
-data Example a
-  = %"empty" Empty
-  | %"record" Record { payload %"json-name" %42 :: a }
-  deriving (Stock.Generic, Stock.Generic1)
+data Entity
+data Json
+data EncodeWith (codec :: Type)
+data EmptyTag
+data RecordTag
+
+%Entity
+data Document a
+  = %EmptyTag EmptyDocument
+  | %RecordTag Document { payload %(EncodeWith Json) %(Maybe a) %Maybe :: a }
+  deriving stock (GHC.Generic, GHC.Generic1)
+  deriving anyclass (M.Generic, M.Generic1)
 ```
 
-Use `M.from`, `M.to`, `M.from1`, and `M.to1`. Stock deriving supplies the
-structural representation; the plugin supplies its modifiers. No second
-explicit deriving clause is needed. Both records and positional constructors,
+Use `M.from`, `M.to`, `M.from1`, and `M.to1`. Each class is an explicit opt-in;
+derive either or both with `anyclass`, explicitly providing the corresponding
+stock instances used by the class defaults. The plugin supplies modifier
+metadata only; it never adds class instances or changes deriving clauses.
+Inline and standalone deriving work.
+There are no blanket `Generic` or `Generic1` instances, so hand-written
+representations can coexist with derived ones. Records and positional constructors,
 sums, products, empty datatypes, newtypes and stock-derivable GADTs work.
 `Rep1` retains `Par1`, `Rec1` and composition from stock `Generic1`.
 
@@ -46,16 +58,19 @@ M.MetaCons name fixity isRecord modifiers
 M.MetaSel name unpackedness strictness decidedStrictness modifiers
 ```
 
+Modifiers are ordinary types: user-defined tags such as `Entity`, applications
+such as `EncodeWith Json` and `Maybe a`, and constructors such as `Maybe` are all
+valid. An annotation records metadata; consumers decide how to interpret it.
 The modifier slot has kind `[Modifier]`. `Mod` existentially packages each
 modifier's kind, so a single list can contain, for example,
-`'[Mod "label", Mod True, Mod 42, Mod Maybe, Mod (Eq Int)]`.
+`'[Mod Entity, Mod (EncodeWith Json), Mod Maybe, Mod (Eq Int)]`.
 `Meta` and `Modifier` use `type data`: their constructors are written without
 promotion ticks. Modifiers retain their source order and duplicates. Unmodified
 entities have `[]`; grouped record fields receive the same modifier list.
 Standard queries such as `datatypeName`, `conName` and `selName` remain usable.
 
-For `Rep (Example Int)`, type parameters in modifiers are instantiated as usual.
-`Rep1 Example` has no concrete last argument: its metadata uses the polykinded
+For `Rep (Document Int)`, type parameters in modifiers are instantiated as usual.
+`Rep1 Document` has no concrete last argument: its metadata uses the polykinded
 symbolic type `Parameter`, just as its values use `Par1`. Thus a field modifier
 `Maybe a` becomes `Mod (Maybe Parameter)` in `Rep1`; it is **not discarded**.
 The remaining datatype parameters retain their actual types.
@@ -65,22 +80,29 @@ The remaining datatype parameters retain their actual types.
 Enable either capture plugin in the **defining module**:
 
 ```haskell
-{-# LANGUAGE DataKinds, Modifiers, TemplateHaskell #-}
+{-# LANGUAGE Modifiers, TemplateHaskell #-}
 {-# OPTIONS_GHC -fplugin=Language.Haskell.TH.Modifier.Plugin #-}
 {-# OPTIONS_GHC -Wno-unrecognised-modifiers #-}
 
 import Language.Haskell.TH
 import Language.Haskell.TH.Modifier
+import Data.Monoid (Sum)
 
-%"table"
-data Row = %"row" Row { value %"column" %True :: Int }
+data Table
+data RowTag
+data Json
+data EncodeWith codec
+
+%Table
+data Row = %RowTag Row { value %(EncodeWith Json) %(Sum Int) :: Int }
 
 $(pure [])  -- normal TH declaration-group boundary
 
 -- Within Q:
--- reifyModifier ''Row  ==> [LitT (StrTyLit "table")]
--- reifyModifier 'Row   ==> [LitT (StrTyLit "row")]
--- reifyModifier 'value ==> [LitT (StrTyLit "column"), PromotedT ...True...]
+-- reifyModifier ''Row  ==> [ConT ''Table]
+-- reifyModifier 'Row   ==> [ConT ''RowTag]
+-- reifyModifier 'value ==> [ AppT (ConT ''EncodeWith) (ConT ''Json)
+--                         , AppT (ConT ''Sum) (ConT ''Int) ]
 ```
 
 Results are ordinary Template Haskell `Type` values, with names retaining their

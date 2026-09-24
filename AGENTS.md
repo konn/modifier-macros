@@ -5,7 +5,7 @@
 This is a cabal-scaffold monorepo experimenting with GHC 10 modifiers.
 
 - `modifier-common/`: shared modifier collection, TH conversion, and metadata types.
-- `modifier-generics/`: modifier-aware `Generic` and `Generic1`, with capture plugin.
+- `modifier-generics/`: explicitly derived modifier-aware `Generic` and `Generic1`, with a metadata capture plugin. Class instances must be requested explicitly; the plugin must not add other class derivations.
 - `th-reify-modifier/`: modifier queries, structured reification using `th-abstraction`, and capture plugin.
 - `modifier-macros/`: original `Semigroup`/`Monoid` derivation experiment and examples.
 - Each package has its own `.cabal`, `src/`, README and license; tests live in `test/`.
@@ -29,6 +29,7 @@ Keep local configuration in ignored `cabal.project.local`.
 Use two-space indentation, `GHC2024`, explicit exports, and the checked-in `fourmolu.yaml` (leading commas, spaced record braces). Use `UpperCamelCase` for modules/types and `lowerCamelCase` for functions.
 
 Prefer `(<>)` over `(++)`, including lists and strings; prefer `pure` over `return`. Address compiler warnings.
+Use `GHC` as the qualifier for `GHC.Generics`.
 
 Format changes with `fourmolu -i <file.hs>` and `cabal-gild --io <package>/<package>.cabal`. Use formatters supporting the project's syntax. After editing `package.yaml`, if introduced, run `hpack`.
 

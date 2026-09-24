@@ -55,6 +55,9 @@ test-suite modifier-generics-test
   other-modules:
     BothPlugins
     Fixture
+    Generics.Modifier.Deriving.MissingStock
+    Generics.Modifier.DerivingFixtures
+    Generics.Modifier.DerivingSpec
     Generics.Modifier.InspectionSpec
     Generics.Modifier.PropertySpec
     Generics.ModifierSpec

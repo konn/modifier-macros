@@ -15,7 +15,7 @@ import GHC.Tc.Utils.Monad (failWithTc, getTopEnv)
 import GHC.Types.Error (mkPlainError)
 import GHC.Types.SourceText (SourceText (..))
 
--- | Capture modifiers during renaming.
+-- | Capture modifiers during renaming without changing class derivations.
 plugin :: Plugin
 plugin =
   defaultPlugin
