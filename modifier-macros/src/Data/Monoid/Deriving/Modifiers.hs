@@ -15,7 +15,6 @@ module Data.Monoid.Deriving.Modifiers (
 import Control.Lens
 import Control.Monad
 import Data.Data.Lens
-import Data.Generics.Labels ()
 import Data.Maybe
 import Data.Monoid
 import Data.Monoid.Deriving.Modifiers.Types

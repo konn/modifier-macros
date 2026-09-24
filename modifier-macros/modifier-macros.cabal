@@ -41,7 +41,6 @@ common defaults
 library
   import: defaults
   build-depends:
-    generic-lens,
     ghc ==10.0.0.20260917,
     lens,
 
