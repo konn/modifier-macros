@@ -59,6 +59,8 @@ test-suite modifier-generics-test
     Generics.Modifier.DerivingFixtures
     Generics.Modifier.DerivingSpec
     Generics.Modifier.InspectionSpec
+    Generics.Modifier.MonoidFixtures
+    Generics.Modifier.MonoidSpec
     Generics.Modifier.PropertySpec
     Generics.ModifierSpec
 

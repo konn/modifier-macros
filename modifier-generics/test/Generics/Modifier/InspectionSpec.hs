@@ -1,11 +1,13 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# OPTIONS_GHC -O2 #-}
 
-module Generics.Modifier.InspectionSpec (test_optimized, roundTrip, roundTrip1, identity, genericField, directField, genericMap, directMap, modifierDirectedField) where
+module Generics.Modifier.InspectionSpec (test_optimized, roundTrip, roundTrip1, identity, genericField, directField, genericMap, directMap, modifierDirectedField, genericAppend, directAppend, genericEmpty, directEmpty) where
 
+import Data.Monoid (Dual (..), Product (..), Sum (..))
 import Data.Proxy (Proxy (..))
 import Fixture
 import Generics.Modifier
+import Generics.Modifier.MonoidFixtures (Record (..))
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.Inspection
 
@@ -49,6 +51,19 @@ genericMap f x = case from1 x of
 directMap :: (a -> b) -> Wrapped a -> Wrapped b
 directMap f (Wrapped a) = Wrapped (f a)
 
+genericAppend :: Record Int -> Record Int -> Record Int
+genericAppend = genericMappend
+
+directAppend :: Record Int -> Record Int -> Record Int
+directAppend (Record a b xs ys) (Record c d zs ws) =
+  Record (a + c) (b * d) (xs <> zs) (ws <> ys)
+
+genericEmpty :: Record Int
+genericEmpty = genericMempty
+
+directEmpty :: Record Int
+directEmpty = Record 0 1 [] []
+
 test_optimized :: TestTree
 test_optimized =
   testGroup
@@ -64,4 +79,8 @@ test_optimized =
     , $(inspectTest $ hasNoTypeClasses 'genericMap)
     , $(inspectTest $ hasNoTypes 'genericField [''M1, ''K1, ''(:*:)])
     , $(inspectTest $ hasNoTypes 'genericMap [''M1, ''Par1])
+    , $(inspectTest $ 'genericAppend === 'directAppend)
+    , $(inspectTest $ 'genericEmpty === 'directEmpty)
+    , $(inspectTest $ hasNoTypeClasses 'genericAppend)
+    , $(inspectTest $ hasNoTypes 'genericAppend [''M1, ''K1, ''(:*:)])
     ]

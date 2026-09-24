@@ -86,13 +86,14 @@ data MyType = MyType
 type MonoidVia :: Type -> Type
 type data MonoidVia a
 
-type family LookupMonoidRepr (mods :: [Modifier]) :: Maybe Type where
-  LookupMonoidRepr '[] = Nothing
-  LookupMonoidRepr (Mod (MonoidVia a) ': xs) = NodupMonoidVia a xs
-  LookupMonoidRepr (_ ': xs) = LookupMonoidRepr xs
+-- Fields without MonoidVia use their own Semigroup and Monoid instances.
+type family LookupMonoidRepr (mods :: [Modifier]) (field :: Type) :: Type where
+  LookupMonoidRepr '[] field = field
+  LookupMonoidRepr (Mod (MonoidVia a) ': xs) _ = NodupMonoidVia a xs
+  LookupMonoidRepr (_ ': xs) field = LookupMonoidRepr xs field
 
 type family NodupMonoidVia a xs where
-  NodupMonoidVia a '[] = Just a
+  NodupMonoidVia a '[] = a
   NodupMonoidVia a (Mod (MonoidVia x) ': xs) =
     TypeError
       ( 'Text "Duplicate MonoidVia modifiers: "
@@ -144,7 +145,7 @@ instance (GSem l, GSem r) => GSem (l :*: r) where
   {-# INLINE gappend #-}
 
 instance
-  ( LookupMonoidRepr mods ~ 'Just rep
+  ( LookupMonoidRepr mods c ~ rep
   , Semigroup rep
   , Coercible c rep
   ) =>
@@ -176,7 +177,7 @@ instance (GMon l, GMon r) => GMon (l :*: r) where
   {-# INLINE gmempty #-}
 
 instance
-  ( LookupMonoidRepr mods ~ 'Just rep
+  ( LookupMonoidRepr mods c ~ rep
   , Monoid rep
   , Coercible c rep
   ) =>
