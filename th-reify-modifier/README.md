@@ -56,6 +56,12 @@ empty datatypes, infix constructors, existentials, and GADTs. Capture of data fa
 instances and `type data` is not supported. Recompile defining modules with the
 updated plugin to obtain the field-occurrence annotations required by this API.
 
+Both plugins persist the same consumer-independent syntax from `modifier-common`.
+This package converts it to TH only when queried, before applying
+`th-abstraction` normalization. Syntax TH cannot express (such as arbitrary
+modifiers inside an arrow type) is rejected during reification, not during
+capture. Recompile defining modules when upgrading from the former TH payloads.
+
 The `modifier-generics` plugin also captures these annotations, so users of both
 packages need only that plugin. See the
 [repository README](https://github.com/konn/modifier-macros#readme) for examples

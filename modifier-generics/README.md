@@ -43,8 +43,12 @@ and representation constructors. `MetaData`, `MetaCons` and `MetaSel` each add a
 reordering or deduplication.
 
 `Rep1` metadata uses the polykinded symbolic `Parameter` for the datatype's final
-argument. Other parameters are instantiated normally. The plugin also captures
-annotations usable by `th-reify-modifier`.
+argument. Other parameters are instantiated normally. This package owns
+`Modifier`, `Metadata` and `ModifierMetadata`; the latter two are implemented in
+an internal metadata module, with `ModifierMetadata` re-exported by
+`Generics.Modifier`. The plugin also captures shared syntax annotations usable
+by `th-reify-modifier`, without converting them to TH or imposing TH's syntax
+restrictions on generic derivation.
 
 See the [repository README](https://github.com/konn/modifier-macros#readme) for
 examples, compiler requirements and boundaries. Tests cover sums, products,

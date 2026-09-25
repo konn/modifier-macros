@@ -43,6 +43,7 @@ library
     Language.Haskell.TH.Modifier
     Language.Haskell.TH.Modifier.Plugin
 
+  other-modules: Language.Haskell.TH.Modifier.Syntax
   build-depends:
     containers >=0.8 && <0.9,
     ghc ==10.0.0.20260917,
@@ -59,9 +60,11 @@ test-suite th-reify-modifier-test
   -- cabal-gild: discover test --exclude=test/Main.hs
   other-modules:
     Language.Haskell.TH.Modifier.DatatypeSpec
+    Language.Haskell.TH.Modifier.SyntaxSpec
     Language.Haskell.TH.ModifierSpec
 
   build-depends:
+    modifier-common,
     tasty,
     tasty-hunit,
     template-haskell >=2.25 && <2.26,
@@ -80,6 +83,7 @@ library fixtures
     FieldFixtures
     Fixture
     LocalFixture
+    SyntaxFixtures
 
   build-depends:
     template-haskell >=2.25 && <2.26,

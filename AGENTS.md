@@ -4,7 +4,7 @@
 
 This is a cabal-scaffold monorepo experimenting with GHC 10 modifiers.
 
-- `modifier-common/`: shared modifier collection, TH conversion, and metadata types.
+- `modifier-common/`: shared modifier collection and consumer-independent syntax annotations. Keep TH conversion and generic metadata in their respective consumer packages.
 - `modifier-generics/`: explicitly derived modifier-aware `Generic` and `Generic1`, with a metadata capture plugin. Class instances must be requested explicitly; the plugin must not add other class derivations.
 - `th-reify-modifier/`: modifier queries, structured reification using `th-abstraction`, and capture plugin.
 - `modifier-macros/`: original `Semigroup`/`Monoid` derivation experiment and examples.

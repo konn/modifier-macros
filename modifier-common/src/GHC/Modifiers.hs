@@ -14,8 +14,8 @@ module GHC.Modifiers (
 import Data.Foldable (toList)
 import Data.List (groupBy, sortOn)
 import GHC.Hs
-import GHC.Modifiers.TH (modifierType)
-import GHC.Modifiers.Types (ConstructorFieldsAnnotation (..), ModifierAnnotation (..))
+import GHC.Modifiers.Syntax (captureType)
+import GHC.Modifiers.Types (ConstructorFieldsSyntaxAnnotation (..), ModifierSyntaxAnnotation (..))
 import GHC.Plugins hiding ((<>))
 import GHC.Tc.Errors.Types (mkTcRnUnknownMessage)
 import GHC.Tc.Types (TcGblEnv (..), TcM)
@@ -97,21 +97,21 @@ annotateModifiers env datatypes = do
     -- A record selector shared by several constructors has one Name. Preserve
     -- all occurrences, in source order, rather than overwrite an earlier one.
     grouped = [(n, concatMap snd xs) | xs@((n, _) : _) <- groupBy (\a b -> fst a == fst b) (sortOn fst entities)]
-    fresh = [(n, ts) | (n, ts) <- grouped, null (findAnns deserializeWithData (tcg_ann_env env) (NamedTarget n) :: [ModifierAnnotation])]
-    annotate (n, ts) = case traverse modifierType ts of
+    fresh = [(n, ts) | (n, ts) <- grouped, null (findAnns deserializeWithData (tcg_ann_env env) (NamedTarget n) :: [ModifierSyntaxAnnotation])]
+    annotate (n, ts) = case traverse captureType ts of
       Left message -> failWithTc $ mkTcRnUnknownMessage $ mkPlainError [] (text message)
-      Right tys -> pure $ Annotation (NamedTarget n) (toSerialized serializeWithData (ModifierAnnotation tys))
+      Right tys -> pure $ Annotation (NamedTarget n) (toSerialized serializeWithData (ModifierSyntaxAnnotation tys))
     freshFields =
       [ (constructorName, map fieldModifiers constructorFields)
       | DatatypeModifiers {..} <- datatypes
       , ConstructorModifiers {..} <- datatypeConstructors
-      , null (findAnns deserializeWithData (tcg_ann_env env) (NamedTarget constructorName) :: [ConstructorFieldsAnnotation])
+      , null (findAnns deserializeWithData (tcg_ann_env env) (NamedTarget constructorName) :: [ConstructorFieldsSyntaxAnnotation])
       ]
-    annotateFields (n, fields) = case traverse (traverse modifierType) fields of
+    annotateFields (n, fields) = case traverse (traverse captureType) fields of
       Left message -> failWithTc $ mkTcRnUnknownMessage $ mkPlainError [] (text message)
-      Right tys -> pure $ Annotation (NamedTarget n) (toSerialized serializeWithData (ConstructorFieldsAnnotation tys))
+      Right tys -> pure $ Annotation (NamedTarget n) (toSerialized serializeWithData (ConstructorFieldsSyntaxAnnotation tys))
 
--- | The annotation-only capture plugin used by TH reification.
+-- | Capture shared syntax annotations without producing consumer-specific data.
 modifierPlugin :: Plugin
 modifierPlugin =
   defaultPlugin

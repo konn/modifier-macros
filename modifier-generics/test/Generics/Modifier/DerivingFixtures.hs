@@ -11,7 +11,7 @@ module Generics.Modifier.DerivingFixtures (
   ExistingStandalone (..), InlineWithStandaloneStock (..), StockOnly (..),
   Unrequested (..), Manual (..), SameName (..), EarlierStock (..), EarlierPlain (..),
   ImportedStock (..), Nested (..), StandaloneNested (..),
-  Entity, Json, EncodeWith, EmptyTag, RecordTag, Document (..),
+  Entity, Json, EncodeWith, EmptyTag, RecordTag, Document (..), NestedAnnotation (..),
 ) where
 
 import Data.Kind (Type)
@@ -103,3 +103,9 @@ deriving stock instance GHC.Generic (EarlierPlain a)
 deriving stock instance GHC.Generic1 EarlierPlain
 deriving anyclass instance M.Generic (EarlierPlain a)
 deriving anyclass instance M.Generic1 EarlierPlain
+
+-- Generic derivation must not be limited by TH type syntax.
+data NestedAnnotation = NestedAnnotation
+  { annotatedArrow %(Int %Entity %Entity -> Bool) :: Int }
+  deriving stock (Eq, Show, GHC.Generic)
+  deriving anyclass M.Generic

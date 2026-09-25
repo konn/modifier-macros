@@ -39,10 +39,10 @@ plugin =
 metadataNames :: TcM (Name, Name)
 metadataNames = do
   env <- getTopEnv
-  case lookupPackageName (hsc_units env) (PackageName (fsLit "modifier-common")) of
-    Nothing -> failWithTc $ mkTcRnUnknownMessage $ mkPlainError [] (text "modifier-common is required by Generics.Modifier.Plugin")
+  case lookupPackageName (hsc_units env) (PackageName (fsLit "modifier-generics")) of
+    Nothing -> failWithTc $ mkTcRnUnknownMessage $ mkPlainError [] (text "modifier-generics is required by Generics.Modifier.Plugin")
     Just unit -> do
-      let mdl = mkModule (RealUnit (Definite unit)) (mkModuleName "GHC.Modifiers.Types")
+      let mdl = mkModule (RealUnit (Definite unit)) (mkModuleName "Generics.Modifier.Metadata")
       (,) <$> lookupOrig mdl (mkTcOcc "ModifierMetadata") <*> lookupOrig mdl (mkTcOcc "Mod")
 
 metadataInstance :: Name -> Name -> DatatypeModifiers -> LInstDecl GhcRn

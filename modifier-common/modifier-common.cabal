@@ -3,8 +3,8 @@ name: modifier-common
 version: 0.1.0.0
 synopsis: Shared collection and metadata for GHC modifiers
 description:
-  Capture heterogeneous GHC modifier metadata on datatype declarations,
-  constructors and fields for generic programming and Template Haskell.
+  Collect heterogeneous GHC modifiers on datatypes, constructors and fields.
+  Persist consumer-independent syntax with resolved names and binder structure.
   This experimental package targets a pinned GHC 10 prerelease. See README.md.
 
 category: Generics
@@ -40,10 +40,9 @@ library
   hs-source-dirs: src
   exposed-modules:
     GHC.Modifiers
-    GHC.Modifiers.TH
+    GHC.Modifiers.Syntax
     GHC.Modifiers.Types
 
   build-depends:
     ghc ==10.0.0.20260917,
     ghc-boot ==10.0.0.20260917,
-    template-haskell >=2.25 && <2.26,

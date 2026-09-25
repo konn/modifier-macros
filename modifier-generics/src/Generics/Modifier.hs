@@ -36,9 +36,9 @@ import Data.Function (on)
 import Data.Kind (Type)
 import GHC.Generics as G hiding (C1, D1, Generic (..), Generic1 (..), M1 (..), Meta (..), S1)
 import GHC.Generics qualified as GHC
-import GHC.Modifiers.Types
 import GHC.TypeError
 import GHC.TypeLits (Nat, Symbol, type (+), type (-))
+import Generics.Modifier.Metadata
 
 -- | Standard metadata with an additional heterogeneous modifier list.
 type data Meta

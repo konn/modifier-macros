@@ -89,6 +89,10 @@ test_deriving =
         M.to (M.K1 (1 :: Int)) @?= Manual 1
         M.from1 (Manual (1 :: Int)) @?= M.Par1 1
         M.to1 (M.Par1 (1 :: Int)) @?= Manual 1
+    , testCase "generic derivation accepts nested modifiers that TH cannot express" $
+        M.to (M.from (NestedAnnotation 7)) @?= NestedAnnotation 7
+    , testCase "TH rejects nested modifiers captured by the generic plugin only when queried" $
+        $(TH.recover [|pure ()|] (THM.reifyModifier 'annotatedArrow >> [|assertFailure "TH silently discarded nested modifiers"|]))
     , testCase "ordinary type modifiers are retained in Rep and Rep1" $ do
         case exampleRep of { Refl -> pure () }
         case exampleRep1 of { Refl -> pure () }

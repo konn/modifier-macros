@@ -8,7 +8,7 @@ prerelease; CI uses Cabal 3.18.1.0.
 | --- | --- |
 | [`modifier-generics`](modifier-generics/) | `Generic` / `Generic1` with modifier lists in datatype, constructor and selector metadata |
 | [`th-reify-modifier`](th-reify-modifier/) | TH modifier queries and `th-abstraction`-based datatype, constructor and field information |
-| [`modifier-common`](modifier-common/) | Shared compiler traversal, heterogeneous metadata and persistent TH annotations |
+| [`modifier-common`](modifier-common/) | Shared compiler traversal and persistent, consumer-independent modifier syntax |
 | [`modifier-macros`](modifier-macros/) | Original field-modifier-based `Semigroup` / `Monoid` experiment |
 
 Each directory is a separate Cabal package, with its own license, README and
@@ -134,11 +134,19 @@ fields. GADT substitutions apply to modifiers as well as field types. See the
   does not require generic instances.
 - This API captures datatype declarations, data constructors and record fields.
 - TH cannot represent modifier annotations *inside* a modifier's function-arrow
-  type beyond a single explicitly identified multiplicity. Unsupported syntax is rejected explicitly, not pretty-printed into a
-  lossy approximation. Top-level heterogeneous modifier lists are supported.
+  type beyond a single explicitly identified multiplicity. Shared capture retains
+  this syntax; TH reification rejects it when queried. Generic derivation does
+  not inherit TH's restrictions. Top-level heterogeneous modifier lists are supported.
 - GHC requires `-fno-external-interpreter` when loading compiler plugins. An
   importing TH consumer without plugins can use `-fexternal-interpreter`.
 - This GHC's experimental modifier syntax and scoping rules remain applicable.
+
+`modifier-common` owns the shared syntax and annotation persistence, with no
+direct dependency on `template-haskell`. The TH package converts that syntax to
+`TH.Type` when reifying; `modifier-generics` owns the type-level `Modifier` and
+`ModifierMetadata` definitions and generates its own metadata. Both plugins
+capture the same neutral annotations. Recompile defining modules after this
+annotation-format change; older TH payloads are not treated as neutral syntax.
 
 ## Development and validation
 

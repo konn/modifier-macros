@@ -23,10 +23,11 @@ import Control.Monad (unless)
 import Data.Data (Data)
 import Data.List (find, zipWith4)
 import Data.Map.Strict qualified as Map
-import GHC.Modifiers.Types (ConstructorFieldsAnnotation (..), ModifierAnnotation (..))
+import GHC.Modifiers.Types (ConstructorFieldsSyntaxAnnotation (..), ModifierSyntaxAnnotation (..))
 import Language.Haskell.TH
 import Language.Haskell.TH.Datatype (ConstructorVariant (..), DatatypeVariant (..), FieldStrictness (FieldStrictness), Strictness (..), Unpackedness (..))
 import Language.Haskell.TH.Datatype qualified as D
+import Language.Haskell.TH.Modifier.Syntax (modifierType)
 
 {- | A modifier-aware view of a @data@ or @newtype@ declaration, normalized
 by @th-abstraction@. Datatype and constructor binders, contexts, kinds and
@@ -146,7 +147,7 @@ constructorInfo info bs ctx = \case
       mods <- refresh <$> readModifiers n
       annotations <- reifyAnnotations (AnnLookupName n)
       fieldMods <- case annotations of
-        [ConstructorFieldsAnnotation ms] -> pure $ refresh ms
+        [ConstructorFieldsSyntaxAnnotation ms] -> refresh <$> either fail pure (traverse (traverse modifierType) ms)
         [] -> fail $ "No constructor field metadata for " <> show n <> ". Recompile its defining module with -fplugin=Language.Haskell.TH.Modifier.Plugin."
         _ -> fail $ "Multiple constructor field metadata annotations for " <> show n
       unless (length fs == length fieldMods) $
@@ -207,7 +208,7 @@ readModifiers name = do
   annotations <- reifyAnnotations (AnnLookupName name)
   case annotations of
     [] -> fail $ "No modifier metadata for " <> show name <> ". Enable -fplugin=Language.Haskell.TH.Modifier.Plugin in its defining module and place local declarations before a declaration splice."
-    _ -> pure $ concat [ts | ModifierAnnotation ts <- annotations]
+    _ -> either fail pure $ traverse modifierType $ concat [ts | ModifierSyntaxAnnotation ts <- annotations]
 
 scopeNames :: Info -> [Name]
 scopeNames = \case

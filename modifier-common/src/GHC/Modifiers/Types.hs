@@ -1,44 +1,100 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE TypeData #-}
-{-# LANGUAGE TypeFamilies #-}
 
--- | Compiler-independent metadata shared by the plugins and their consumers.
+{- | Consumer-independent syntax persisted by modifier capture. This module
+depends only on base; it contains neither TH types nor generic representations.
+-}
 module GHC.Modifiers.Types (
-  Modifier (..),
-  Metadata,
-  ModifierMetadata,
-  ModifierAnnotation (..),
-  ConstructorFieldsAnnotation (..),
+  ModifierName (..),
+  NameIdentity (..),
+  Namespace (..),
+  ModifierType (..),
+  TupleSort (..),
+  Arrow (..),
+  Binder (..),
+  BinderVisibility (..),
+  ModifierSyntaxAnnotation (..),
+  ConstructorFieldsSyntaxAnnotation (..),
 ) where
 
 import Data.Data (Data)
-import Data.Kind (Type)
-import GHC.TypeLits (Symbol)
-import Language.Haskell.TH.Syntax qualified as TH
 
-{- | An existential kind wrapper. For example, @'[Mod Int, Mod True,
-Mod "label"]@ contains modifiers of three different kinds.
+-- | A resolved name, with namespace and identity kept separately from spelling.
+data ModifierName = ModifierName Namespace NameIdentity
+  deriving (Eq, Ord, Show, Data)
+
+{- | Global names retain their defining unit and module; local names retain
+their unique, so shadowed binders are distinct even when spellings coincide.
 -}
-type data Modifier :: Type where
-  Mod :: k -> Modifier
+data NameIdentity
+  = GlobalName String String String
+  | LocalName String Integer
+  deriving (Eq, Ord, Show, Data)
 
-{- | Datatype modifiers, followed by constructor names, constructor modifiers,
-and the modifiers of each field in declaration order.
+-- | Record fields retain their parent constructor as part of their namespace.
+data Namespace
+  = TypeVariable
+  | TypeConstructor
+  | DataConstructor
+  | Value
+  | Field String
+  deriving (Eq, Ord, Show, Data)
+
+{- | Renamed type syntax, without imposing any consumer's representational
+restrictions. Arrow modifiers, their order and duplicates are retained.
+Parentheses are preserved; documentation and expanded splices are transparent.
 -}
-type Metadata = ([Modifier], [(Symbol, [Modifier], [[Modifier]])])
+data ModifierType
+  = NamedType ModifierName
+  | AppliedType ModifierType ModifierType
+  | KindAppliedType ModifierType ModifierType
+  | InfixType ModifierType ModifierType ModifierType
+  | ParenthesizedType ModifierType
+  | KindSignature ModifierType ModifierType
+  | ImplicitParameter String ModifierType
+  | ListType ModifierType
+  | TupleType TupleSort [ModifierType]
+  | SumType [ModifierType]
+  | PromotedList [ModifierType]
+  | PromotedTuple [ModifierType]
+  | StringType String
+  | CharacterType Char
+  | NaturalType Integer
+  | StarType
+  | WildcardType
+  | QualifiedType [ModifierType] ModifierType
+  | ForallType [Binder] ModifierType
+  | VisibleForallType [Binder] ModifierType
+  | FunctionType Arrow [ModifierType] ModifierType ModifierType
+  deriving (Eq, Show, Data)
 
--- | Populated by the generic plugin. Parameters remain in scope on the RHS.
-type family ModifierMetadata (a :: k) :: Metadata
+-- | Boxed tuple syntax may also denote a constraint tuple before kindchecking.
+data TupleSort = BoxedOrConstraintTuple | UnboxedTuple
+  deriving (Eq, Show, Data)
 
-{- | A distinct annotation payload, persisted in interface files. An empty
-payload records that an entity was inspected and has no modifiers.
+-- | The written arrow, independently of any modifiers attached to it.
+data Arrow = StandardArrow | LinearArrow
+  deriving (Eq, Show, Data)
+
+{- | A binder's identity, optional kind and visibility. Nothing denotes a
+wildcard binder; consumers decide whether they can represent it.
 -}
-newtype ModifierAnnotation = ModifierAnnotation [TH.Type]
-  deriving (Data)
+data Binder = Binder (Maybe ModifierName) (Maybe ModifierType) BinderVisibility
+  deriving (Eq, Show, Data)
 
-{- | Modifiers for each field of one constructor, in declaration order.
-Unlike selector annotations, this includes positional fields and keeps shared
-record labels separate. The payload is empty for a nullary constructor.
+{- | Required binders use visible forall syntax; invisible binders may be
+specified or inferred.
 -}
-newtype ConstructorFieldsAnnotation = ConstructorFieldsAnnotation [[TH.Type]]
-  deriving (Data)
+data BinderVisibility = Required | Specified | Inferred
+  deriving (Eq, Show, Data)
+
+{- | Per-entity modifier syntax. An empty list records successful capture.
+This distinct payload type cannot be confused with the former TH annotations.
+-}
+newtype ModifierSyntaxAnnotation = ModifierSyntaxAnnotation [ModifierType]
+  deriving (Eq, Show, Data)
+
+{- | One list per field occurrence of a constructor, including positional
+fields. Shared record labels remain separate; nullary constructors use [].
+-}
+newtype ConstructorFieldsSyntaxAnnotation = ConstructorFieldsSyntaxAnnotation [[ModifierType]]
+  deriving (Eq, Show, Data)

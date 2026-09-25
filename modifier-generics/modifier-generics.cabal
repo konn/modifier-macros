@@ -42,6 +42,7 @@ library
     Generics.Modifier
     Generics.Modifier.Plugin
 
+  other-modules: Generics.Modifier.Metadata
   build-depends:
     ghc ==10.0.0.20260917,
     modifier-common >=0.1 && <0.2,
