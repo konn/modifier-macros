@@ -2,13 +2,14 @@
 
 ## Project Structure & Module Organization
 
-This GHC plugin derives `Semigroup` and `Monoid` through field modifiers and `ModifiersOn`.
+This is a cabal-scaffold monorepo experimenting with GHC 10 modifiers.
 
-- `src/Data/Monoid/Deriving/Modifiers.hs`: compiler plugin.
-- `src/Data/Monoid/Deriving/Modifiers/Types.hs`: generic derivation machinery.
-- `app/Main.hs`: executable examples.
-- `test/Main.hs`: Tasty discovery entry point; currently no test cases.
-- `modifier-macros.cabal`, `cabal.project`, `cabal.project.freeze`: components, settings, dependency constraints.
+- `modifier-common/`: shared modifier collection and consumer-independent syntax annotations. Keep TH conversion and generic metadata in their respective consumer packages.
+- `modifier-generics/`: explicitly derived modifier-aware `Generic` and `Generic1`, with a metadata capture plugin. Class instances must be requested explicitly; the plugin must not add other class derivations.
+- `th-reify-modifier/`: modifier queries, structured reification using `th-abstraction`, and capture plugin.
+- `modifier-macros/`: original `Semigroup`/`Monoid` derivation experiment and examples.
+- Each package has its own `.cabal`, `src/`, README and license; tests live in `test/`.
+- Root `cabal.project`, `cabal.project.freeze`, `cabal-scaffold.yaml`: shared settings.
 - `.github/workflows/haskell.yml`, `ci/scripts/`: CI and artifact handling.
 
 ## Build, Test, and Development Commands
@@ -19,7 +20,7 @@ Match CI's GHC `10.0.0.20260917` prerelease and Cabal `3.18.1.0`. Run from the r
 - `cabal build all`: compile all enabled components.
 - `cabal run modifier-macros-exe`: run examples.
 - `cabal test all --test-show-details=direct`: run tests.
-- `cabal check`: validate package metadata.
+- `bash ci/scripts/cabal-check-packages.sh`: validate every package.
 
 Keep local configuration in ignored `cabal.project.local`.
 
@@ -28,12 +29,15 @@ Keep local configuration in ignored `cabal.project.local`.
 Use two-space indentation, `GHC2024`, explicit exports, and the checked-in `fourmolu.yaml` (leading commas, spaced record braces). Use `UpperCamelCase` for modules/types and `lowerCamelCase` for functions.
 
 Prefer `(<>)` over `(++)`, including lists and strings; prefer `pure` over `return`. Address compiler warnings.
+Use `GHC` as the qualifier for `GHC.Generics`.
 
-Format changes with `fourmolu -i <file.hs>` and `cabal-gild --io modifier-macros.cabal`. Use formatters supporting the project's syntax. After editing `package.yaml`, if introduced, run `hpack`.
+Format changes with `fourmolu -i <file.hs>` and `cabal-gild --io <package>/<package>.cabal`. Use formatters supporting the project's syntax. After editing `package.yaml`, if introduced, run `hpack`.
 
 ## Testing Guidelines
 
-Use Tasty with `tasty-discover`; add regressions under `test/` with behavior-focused names. Cover record/positional modifiers, unmodified fields, and monoid identity. Declare additional testing dependencies in the Cabal test stanza. No coverage threshold exists; an empty suite proves no behavior.
+Use Tasty with `tasty-discover`; add regressions under each package's `test/` with behavior-focused names. Use `falsify` for property tests and `tasty-inspection-testing` for optimization assertions. Cover record/positional modifiers, unmodified fields, and monoid identity. Declare additional testing dependencies in the Cabal test stanza. Keep compile-time metadata equalities and imported/local TH reification tests, including the separate fixture library and external-interpreter consumer.
+
+Mirror the tested library's module hierarchy: tests for `Generics.Modifier` belong in `test/Generics/ModifierSpec.hs`. Larger specs may be split beneath the corresponding module namespace, such as `Generics.Modifier.InspectionSpec`; avoid names that collide with another library module's spec.
 
 ## Agent Tools
 
@@ -46,6 +50,8 @@ Use the Haskell skill, local Haddock/Hoogle lookup, and formatting tools. Plugin
 ## Commit & Pull Request Guidelines
 
 Use concise imperative subjects, following `Fix CI test job and artifact handoff`. PRs should explain changes, link relevant issues, and report validation.
+
+Changelogs describe the final changes since the last released version. Consolidate unreleased work into release-facing entries; omit intermediate implementation history and migration notes for designs that were never released. For an initial release, use a single “Initial release.” entry, not a feature inventory.
 
 Every commit must include both trailers, replacing placeholders with the actual agent identity and public attribution email:
 

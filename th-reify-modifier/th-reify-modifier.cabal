@@ -1,0 +1,90 @@
+cabal-version: 3.4
+name: th-reify-modifier
+version: 0.1.0.0
+synopsis: Reify GHC modifiers as Template Haskell types
+description:
+  Capture heterogeneous GHC modifier metadata on datatype declarations,
+  constructors and fields for generic programming and Template Haskell.
+  Provide structured datatype reification using th-abstraction normalization.
+  This experimental package targets a pinned GHC 10 prerelease. See README.md.
+
+category: Generics
+license: BSD-3-Clause
+license-file: LICENSE
+author: Hiromi ISHII
+maintainer: konn.jinro_at_gmail.com
+build-type: Simple
+tested-with: ghc ==10.0.0.20260917
+homepage: https://github.com/konn/modifier-macros
+bug-reports: https://github.com/konn/modifier-macros/issues
+extra-doc-files:
+  CHANGELOG.md
+  README.md
+
+source-repository head
+  type: git
+  location: https://github.com/konn/modifier-macros.git
+  subdir: th-reify-modifier
+
+common defaults
+  default-language: GHC2024
+  ghc-options:
+    -Wall
+    -Wcompat
+    -Wmissing-export-lists
+    -Wmissing-home-modules
+
+  build-depends: base >=4.23 && <4.24
+
+library
+  import: defaults
+  hs-source-dirs: src
+  exposed-modules:
+    Language.Haskell.TH.Modifier
+    Language.Haskell.TH.Modifier.Plugin
+
+  other-modules: Language.Haskell.TH.Modifier.Syntax
+  build-depends:
+    containers >=0.8 && <0.9,
+    ghc ==10.0.0.20260917,
+    modifier-common >=0.1 && <0.2,
+    template-haskell >=2.25 && <2.26,
+    th-abstraction >=0.7.2 && <0.8,
+
+test-suite th-reify-modifier-test
+  import: defaults
+  type: exitcode-stdio-1.0
+  hs-source-dirs: test
+  main-is: Main.hs
+  ghc-options: -fexternal-interpreter
+  -- cabal-gild: discover test --exclude=test/Main.hs
+  other-modules:
+    Language.Haskell.TH.Modifier.DatatypeSpec
+    Language.Haskell.TH.Modifier.SyntaxSpec
+    Language.Haskell.TH.ModifierSpec
+
+  build-depends:
+    modifier-common,
+    tasty,
+    tasty-hunit,
+    template-haskell >=2.25 && <2.26,
+    th-abstraction >=0.7.2 && <0.8,
+    th-reify-modifier,
+    th-reify-modifier:fixtures,
+
+  build-tool-depends: tasty-discover:tasty-discover
+
+-- Separately compiled so reification must load persisted interface metadata.
+library fixtures
+  import: defaults
+  hs-source-dirs: fixtures
+  exposed-modules:
+    DatatypeFixtures
+    FieldFixtures
+    Fixture
+    LocalFixture
+    SyntaxFixtures
+
+  build-depends:
+    template-haskell >=2.25 && <2.26,
+    th-reify-modifier,

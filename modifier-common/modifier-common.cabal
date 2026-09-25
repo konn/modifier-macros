@@ -1,0 +1,48 @@
+cabal-version: 3.4
+name: modifier-common
+version: 0.1.0.0
+synopsis: Shared collection and metadata for GHC modifiers
+description:
+  Collect heterogeneous GHC modifiers on datatypes, constructors and fields.
+  Persist consumer-independent syntax with resolved names and binder structure.
+  This experimental package targets a pinned GHC 10 prerelease. See README.md.
+
+category: Generics
+license: BSD-3-Clause
+license-file: LICENSE
+author: Hiromi ISHII
+maintainer: konn.jinro_at_gmail.com
+build-type: Simple
+tested-with: ghc ==10.0.0.20260917
+homepage: https://github.com/konn/modifier-macros
+bug-reports: https://github.com/konn/modifier-macros/issues
+extra-doc-files:
+  CHANGELOG.md
+  README.md
+
+source-repository head
+  type: git
+  location: https://github.com/konn/modifier-macros.git
+  subdir: modifier-common
+
+common defaults
+  default-language: GHC2024
+  ghc-options:
+    -Wall
+    -Wcompat
+    -Wmissing-export-lists
+    -Wmissing-home-modules
+
+  build-depends: base >=4.23 && <4.24
+
+library
+  import: defaults
+  hs-source-dirs: src
+  exposed-modules:
+    GHC.Modifiers
+    GHC.Modifiers.Syntax
+    GHC.Modifiers.Types
+
+  build-depends:
+    ghc ==10.0.0.20260917,
+    ghc-boot ==10.0.0.20260917,

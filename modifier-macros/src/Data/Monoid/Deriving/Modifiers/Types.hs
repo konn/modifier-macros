@@ -77,7 +77,6 @@ instance
   where
   gappend = coerce ((<>) @rep)
 
-
 -- Positional
 instance
   {-# OVERLAPPING #-}
@@ -85,7 +84,6 @@ instance
   GMSem rs (C1 (MetaCons name fix 'False) f)
   where
   gappend = coerce (gappendN @0 @reps @f)
-
 
 type family Size f :: Nat where
   Size (S1 i f) = 1
@@ -95,10 +93,13 @@ type GMSemPos :: Nat -> [Type] -> (Type -> Type) -> Constraint
 class GMSemPos n reps f where
   gappendN :: f () -> f () -> f ()
 
-instance {-# OVERLAPPING #-} 
+instance
+  {-# OVERLAPPING #-}
   ( GMSemPos n reps l
   , GMSemPos (n + Size l) reps r
-  ) => GMSemPos n reps (l :*: r) where
+  ) =>
+  GMSemPos n reps (l :*: r)
+  where
   gappendN (l :*: r) (l' :*: r') =
     gappendN @n @reps l l' :*: gappendN @(n + Size l) @reps r r'
 
@@ -154,15 +155,17 @@ instance
   gmempty = M1 $ gmemptyN @0 @reps @f
   {-# INLINE gmempty #-}
 
-
 type GMMonPos :: Nat -> [Type] -> (Type -> Type) -> Constraint
 class GMMonPos n reps f where
   gmemptyN :: f ()
 
-instance {-# OVERLAPPING #-} 
+instance
+  {-# OVERLAPPING #-}
   ( GMMonPos n reps l
   , GMMonPos (n + Size l) reps r
-  ) => GMMonPos n reps (l :*: r) where
+  ) =>
+  GMMonPos n reps (l :*: r)
+  where
   gmemptyN = gmemptyN @n @reps @l :*: gmemptyN @(n + Size l) @reps @r
 
 instance

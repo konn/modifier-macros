@@ -15,7 +15,6 @@ module Data.Monoid.Deriving.Modifiers (
 import Control.Lens
 import Control.Monad
 import Data.Data.Lens
-import Data.Generics.Labels ()
 import Data.Maybe
 import Data.Monoid
 import Data.Monoid.Deriving.Modifiers.Types
@@ -121,11 +120,11 @@ data FieldRepInfo
   | IsPositional [LHsType GhcRn]
 
 parseFieldRepInfo :: ConDecl GhcRn -> FieldRepInfo
-parseFieldRepInfo ConDeclGADT {..} = 
+parseFieldRepInfo ConDeclGADT {..} =
   let con = case con_g_args of
         PrefixConGADT _ args -> PrefixCon args
         RecConGADT _ flds -> RecCon flds
-  in parseConArgs con
+   in parseConArgs con
 parseFieldRepInfo ConDeclH98 {..} = parseConArgs con_args
 
 parseConArgs :: HsConDeclH98Details GhcRn -> FieldRepInfo

@@ -2,8 +2,8 @@ cabal-version: 3.4
 name: modifier-macros
 version: 0.1.0.0
 build-type: Simple
-category: Web
--- synopsis: Short description of your package
+category: Generics
+synopsis: Derive monoids using GHC field modifiers
 description: Please see the README on GitHub at <https://github.com/konn/modifier-macros#readme>
 license: BSD-3-Clause
 license-file: LICENSE
@@ -20,6 +20,7 @@ homepage: https://github.com/konn/modifier-macros#readme
 source-repository head
   type: git
   location: https://github.com/konn/modifier-macros.git
+  subdir: modifier-macros
 
 common defaults
   ghc-options:
@@ -40,8 +41,7 @@ common defaults
 library
   import: defaults
   build-depends:
-    generic-lens,
-    ghc,
+    ghc ==10.0.0.20260917,
     lens,
 
   hs-source-dirs: src
@@ -78,9 +78,10 @@ test-suite modifier-macros-test
     -with-rtsopts=-N
 
   -- cabal-gild: discover test --exclude=test/Main.hs
-  other-modules:
+  other-modules: Data.Monoid.Deriving.ModifiersSpec
   build-depends:
     modifier-macros,
     tasty,
+    tasty-hunit,
 
   build-tool-depends: tasty-discover:tasty-discover
