@@ -51,6 +51,8 @@ Use the Haskell skill, local Haddock/Hoogle lookup, and formatting tools. Plugin
 
 Use concise imperative subjects, following `Fix CI test job and artifact handoff`. PRs should explain changes, link relevant issues, and report validation.
 
+Changelogs describe the final changes since the last released version. Consolidate unreleased work into release-facing entries; omit intermediate implementation history and migration notes for designs that were never released. For an initial release, use a single “Initial release.” entry, not a feature inventory.
+
 Every commit must include both trailers, replacing placeholders with the actual agent identity and public attribution email:
 
 ```text
